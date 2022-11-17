@@ -1,0 +1,26 @@
+<annotation>
+	<folder>image56</folder>
+	<filename>img56_11921.jpg</filename>
+	<path>E:\数据集\ball_images\image56\img56_11921.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1280</width>
+		<height>720</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>ball</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>677</xmin>
+			<ymin>148</ymin>
+			<xmax>737</xmax>
+			<ymax>205</ymax>
+		</bndbox>
+	</object>
+</annotation>

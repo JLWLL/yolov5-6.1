@@ -1,0 +1,26 @@
+<annotation>
+	<folder>image38</folder>
+	<filename>img38_12033.jpg</filename>
+	<path>E:\数据集\ball_images\image38\img38_12033.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1280</width>
+		<height>720</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>ball</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>405</xmin>
+			<ymin>293</ymin>
+			<xmax>468</xmax>
+			<ymax>352</ymax>
+		</bndbox>
+	</object>
+</annotation>

@@ -1,0 +1,26 @@
+<annotation>
+	<folder>image47</folder>
+	<filename>img47_10599.jpg</filename>
+	<path>E:\数据集\ball_images\image47\img47_10599.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1280</width>
+		<height>720</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>ball</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>515</xmin>
+			<ymin>490</ymin>
+			<xmax>577</xmax>
+			<ymax>549</ymax>
+		</bndbox>
+	</object>
+</annotation>
