@@ -26,6 +26,9 @@ wheels/
 /wandb/
 .installed.cfg
 *.egg
+runs/
+VOC2007/
+VOCdevkit/
 
 
 # PyInstaller
