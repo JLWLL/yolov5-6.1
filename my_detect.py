@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import cv2
@@ -60,6 +61,7 @@ def do(model, device, weights,
        project=ROOT / 'runs/detect',  # save results to project/name
        name='exp',  # save results to project/name
        exist_ok=False,  # existing project/name ok, do not increment
+       file_name='result.jpg'
        ):
     imgsz *= 2 if len(imgsz) == 1 else 1  # expand
     stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
@@ -92,7 +94,11 @@ def do(model, device, weights,
     # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
+    index = 0
+    save_path = ''
+    all_things_names = ''
     for path, im, im0s, vid_cap, s in dataset:
+        all_things_names = ''
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
@@ -111,9 +117,6 @@ def do(model, device, weights,
         # NMS
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
         dt[2] += time_sync() - t3
-
-        # Second-stage classifier (optional)
-        # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
@@ -139,6 +142,7 @@ def do(model, device, weights,
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                    all_things_names += f"{n} {names[int(c)]}{'s' * (n > 1)},"
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
@@ -154,7 +158,6 @@ def do(model, device, weights,
                         annotator.box_label(xyxy, label, color=colors(c, True))
                         if save_crop:
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-
             # Stream results
             im0 = annotator.result()
             if view_img:
@@ -164,7 +167,11 @@ def do(model, device, weights,
             # Save results (image with detections)
             if save_img:
                 if dataset.mode == 'image':
+                    # print(save_path)
+                    # save_path = f"/app/result/{file_name}.jpg"  # for docker aihub
+                    save_path = f"result/{file_name}-{index}.jpg"  # for local test
                     cv2.imwrite(save_path, im0)
+                    index += 1
                 else:  # 'video' or 'stream'
                     if vid_path[i] != save_path:  # new video
                         vid_path[i] = save_path
@@ -179,15 +186,12 @@ def do(model, device, weights,
                         save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer[i].write(im0)
-
-        # Print time (inference-only)
-        # LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
-
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
-    return save_dir
+    all_things_names += ' Done.'
+    return save_path, all_things_names
 
 
 def parse_opt(weights):
@@ -205,11 +209,13 @@ def parse_opt(weights):
 def run_detect(opt):
     # check_requirements(exclude=('tensorboard', 'thop'))
     model, device, weights = in_model(**vars(opt))
-    save_dir = do(model, device, weights, source=ROOT / 'data/images')
-    return save_dir
+    time_str = datetime.now().strftime('%Y%m%d%H%M%S')
+    save_dir, result = do(model, device, weights, source=ROOT / 'data/images', file_name=time_str)
+    return save_dir, result
 
 
 if __name__ == "__main__":
     opt = parse_opt('yolov5s.pt')
-    s = run_detect(opt)
+    s,r = run_detect(opt)
     print(s)
+    print(r)

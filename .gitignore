@@ -193,3 +193,4 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 *.jpg
+*.xml
