@@ -23,32 +23,49 @@ from utils.torch_utils import select_device, time_sync
 
 @torch.no_grad()
 def in_model(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
-             source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
              data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
-             imgsz=(640, 640),  # inference size (height, width)
-             conf_thres=0.25,  # confidence threshold
-             iou_thres=0.45,  # NMS IOU threshold
-             max_det=1000,  # maximum detections per image
              device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-             view_img=False,  # show results
-             save_txt=False,  # save results to *.txt
-             save_conf=False,  # save confidences in --save-txt labels
-             save_crop=False,  # save cropped prediction boxes
-             nosave=False,  # do not save images/videos
-             classes=None,  # filter by class: --class 0, or --class 0 2 3
-             agnostic_nms=False,  # class-agnostic NMS
-             augment=False,  # augmented inference
-             visualize=False,  # visualize features
-             update=False,  # update all models
-             project=ROOT / 'runs/detect',  # save results to project/name
-             name='exp',  # save results to project/name
-             exist_ok=False,  # existing project/name ok, do not increment
-             line_thickness=3,  # bounding box thickness (pixels)
-             hide_labels=False,  # hide labels
-             hide_conf=False,  # hide confidences
-             half=False,  # use FP16 half-precision inference
              dnn=False,  # use OpenCV DNN for ONNX inference
              ):
+    # Directories
+
+    # Load model
+    device = select_device(device)
+    model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
+    # save_path = do(model, device, weights)
+    return model, device, weights
+
+
+@torch.no_grad()
+def do(model, device, weights,
+       line_thickness=3,  # bounding box thickness (pixels)
+       hide_labels=False,  # hide labels
+       hide_conf=False,  # hide confidences
+       half=False,  # use FP16 half-precision inference
+       view_img=False,  # show results
+       save_txt=False,  # save results to *.txt
+       save_conf=False,  # save confidences in --save-txt labels
+       save_crop=False,  # save cropped prediction boxes
+       nosave=False,  # do not save images/videos
+       classes=None,  # filter by class: --class 0, or --class 0 2 3
+       agnostic_nms=False,  # class-agnostic NMS
+       augment=False,  # augmented inference
+       visualize=False,  # visualize features
+       update=False,  # update all models
+       max_det=1000,  # maximum detections per image
+       source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
+       imgsz=(640, 640),  # inference size (height, width)
+       conf_thres=0.25,  # confidence threshold
+       iou_thres=0.45,  # NMS IOU threshold
+       project=ROOT / 'runs/detect',  # save results to project/name
+       name='exp',  # save results to project/name
+       exist_ok=False,  # existing project/name ok, do not increment
+       ):
+    imgsz *= 2 if len(imgsz) == 1 else 1  # expand
+    stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
+    imgsz = check_img_size(imgsz, s=stride)  # check image size
+    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+    (save_dir / 'labels' if False else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -56,26 +73,6 @@ def in_model(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
     if is_url and is_file:
         source = check_file(source)  # download
-
-    # Directories
-    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
-    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
-
-    # Load model
-    device = select_device(device)
-    model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
-    save_path = do(model, imgsz, device, half, webcam, source, save_dir, augment, conf_thres, iou_thres, classes,
-                    agnostic_nms, max_det, save_crop, line_thickness, save_txt \
-                    , save_conf, save_img, hide_labels, hide_conf, update, weights, visualize, view_img)
-    return save_path
-
-@torch.no_grad()
-def do(model, imgsz, device, half, webcam, source, save_dir, augment, conf_thres, iou_thres, classes, agnostic_nms,
-        max_det, save_crop, line_thickness, save_txt, save_conf, save_img, hide_labels, hide_conf, update, weights,
-        visualize, view_img):
-    stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
-    imgsz = check_img_size(imgsz, s=stride)  # check image size
-
     # Half
     half &= (pt or jit or onnx or engine) and device.type != 'cpu'  # FP16 supported on limited backends with CUDA
     if pt or jit:
@@ -193,47 +190,26 @@ def do(model, imgsz, device, half, webcam, source, save_dir, augment, conf_thres
     return save_dir
 
 
-def parse_opt(weights, source):
+def parse_opt(weights):
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=weights, help='model path(s)')
-    parser.add_argument('--source', type=str, default=source, help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
-    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
-    parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
-    parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
-    parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--view-img', action='store_true', help='show results')
-    parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
-    parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
-    parser.add_argument('--save-crop', action='store_true', help='save cropped prediction boxes')
-    parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
-    parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --classes 0, or --classes 0 2 3')
-    parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
-    parser.add_argument('--augment', action='store_true', help='augmented inference')
-    parser.add_argument('--visualize', action='store_true', help='visualize features')
-    parser.add_argument('--update', action='store_true', help='update all models')
-    parser.add_argument('--project', default=ROOT / 'runs/detect', help='save results to project/name')
-    parser.add_argument('--name', default='exp', help='save results to project/name')
-    parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
-    parser.add_argument('--line-thickness', default=3, type=int, help='bounding box thickness (pixels)')
-    parser.add_argument('--hide-labels', default=False, action='store_true', help='hide labels')
-    parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
-    parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     opt = parser.parse_args()
-    opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
-    print_args(FILE.stem, opt)
+    # opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
+    # print_args(FILE.stem, opt)
     return opt
 
 
 def run_detect(opt):
-    check_requirements(exclude=('tensorboard', 'thop'))
-    save_dir = in_model(**vars(opt))
+    # check_requirements(exclude=('tensorboard', 'thop'))
+    model, device, weights = in_model(**vars(opt))
+    save_dir = do(model, device, weights, source=ROOT / 'data/images')
     return save_dir
 
 
 if __name__ == "__main__":
-    opt = parse_opt('best.pt', 'data/images')
+    opt = parse_opt('yolov5s.pt')
     s = run_detect(opt)
     print(s)
